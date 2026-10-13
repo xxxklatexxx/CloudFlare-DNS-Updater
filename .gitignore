@@ -1,0 +1,6 @@
+/config.json
+/secrets/
+/state/
+/dist/
+*.exe
+*.test

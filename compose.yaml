@@ -1,0 +1,38 @@
+services:
+  ddns:
+    build: .
+    image: homelab-cloudflare-ddns:local
+    restart: unless-stopped
+    read_only: true
+    user: "65532:65532"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./config.json:/config/config.json:ro
+      - ddns-state:/state
+      # For AAAA using an address file, uncomment and configure ipv6.file:
+      # - ./service-ipv6:/sources/service-ipv6:ro
+    secrets:
+      - cloudflare_api_token
+      - dashboard_password
+    healthcheck:
+      test: [CMD, /ddns, -healthcheck]
+      interval: 30s
+      timeout: 6s
+      start_period: 90s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 20s
+secrets:
+  cloudflare_api_token:
+    file: ./secrets/cloudflare_api_token
+  dashboard_password:
+    file: ./secrets/dashboard_password
+volumes:
+  ddns-state:

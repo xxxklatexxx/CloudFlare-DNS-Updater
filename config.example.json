@@ -1,0 +1,15 @@
+{
+  "zone_id": "00000000000000000000000000000000",
+  "interval": "5m",
+  "request_timeout": "10s",
+  "ipv4": { "url": "https://api.ipify.org" },
+  "records": [
+    { "name": "home.example.com", "type": "A" },
+    { "name": "vpn.example.com", "type": "A" }
+  ],
+  "token_file": "/run/secrets/cloudflare_api_token",
+  "dashboard_password_file": "/run/secrets/dashboard_password",
+  "dashboard_username": "admin",
+  "listen": ":8080",
+  "state_dir": "/state"
+}

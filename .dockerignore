@@ -1,0 +1,9 @@
+.git
+.codex
+.agents
+secrets
+config.json
+state
+dist
+*.exe
+*.test
