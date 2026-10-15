@@ -106,7 +106,7 @@ func setup(t *testing.T) (*fixture, *Updater) {
 		json.NewEncoder(w).Encode(map[string]any{"success": true, "result": map[string]any{}})
 	}))
 	t.Cleanup(f.server.Close)
-	c := Config{ZoneID: strings.Repeat("a", 32), Records: []Record{{Name: "home.example.com", Type: "A"}}, IPv4: Source{URL: f.server.URL + "/ip"}, Interval: "5m", Timeout: "1s", Username: "admin", Listen: ":8080", StateDir: t.TempDir(), TokenFile: "unused", PasswordFile: "unused", APIBase: f.server.URL}
+	c := Config{ZoneID: strings.Repeat("a", 32), Records: []Record{{Name: "home.example.com", Type: "A"}}, IPv4: Source{URL: f.server.URL + "/ip"}, Interval: "5m", Timeout: "1s", Listen: ":8080", StateDir: t.TempDir(), TokenFile: "unused", APIBase: f.server.URL}
 	if err := c.validate(); err != nil {
 		t.Fatal(err)
 	}

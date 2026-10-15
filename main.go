@@ -54,14 +54,7 @@ func main() {
 		}
 		return
 	}
-	password, err := readSecret(c.PasswordFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if len(password) < 16 {
-		log.Fatal("dashboard password must contain at least 16 characters")
-	}
-	h, err := dashboard(ctx, u, password)
+	h, err := dashboard(ctx, u)
 	if err != nil {
 		log.Fatal(err)
 	}

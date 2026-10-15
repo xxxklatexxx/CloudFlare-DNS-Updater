@@ -17,13 +17,12 @@ try {
     New-Item -ItemType Directory -Path $fixtureRoot -Force | Out-Null
     $utf8 = [Text.UTF8Encoding]::new($false)
     [IO.File]::WriteAllText((Join-Path $fixtureRoot 'token'), 'mock-api-token', $utf8)
-    [IO.File]::WriteAllText((Join-Path $fixtureRoot 'password'), 'smoke-password-123456', $utf8)
     [IO.File]::WriteAllText((Join-Path $fixtureRoot 'ip'), '127.0.0.1', $utf8)
     $config = @{
         zone_id = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
         interval = '5m'; request_timeout = '1s'; listen = ':8080'; state_dir = '/state'
-        token_file = '/fixtures/token'; dashboard_password_file = '/fixtures/password'
-        dashboard_username = 'admin'; ipv4 = @{ file = '/fixtures/ip' }
+        token_file = '/fixtures/token'
+        ipv4 = @{ file = '/fixtures/ip' }
         records = @(@{name = 'home.example.com'; type = 'A'})
     } | ConvertTo-Json -Depth 5
     [IO.File]::WriteAllText((Join-Path $fixtureRoot 'config.json'), $config, $utf8)
@@ -40,18 +39,20 @@ try {
     if (!$response -or [int]$response.StatusCode -ne 503) { throw 'Invalid discovery must produce unhealthy status' }
     $response.Dispose()
     $response = $client.GetAsync("$base/api/status").GetAwaiter().GetResult()
-    if ([int]$response.StatusCode -ne 401) { throw 'Dashboard must require authentication' }
+    if ([int]$response.StatusCode -ne 200 -or $response.Headers.WwwAuthenticate.Count -ne 0) { throw 'Dashboard must open without sign-in' }
     $response.Dispose()
-    $basic = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('admin:smoke-password-123456'))
-    $client.DefaultRequestHeaders.Authorization = [Net.Http.Headers.AuthenticationHeaderValue]::new('Basic', $basic)
     $html = $client.GetStringAsync($base + '/').GetAwaiter().GetResult()
     if ($html -notmatch "const csrf='([a-f0-9]+)'" ) { throw 'Dashboard CSRF token missing' }
     $csrf = $Matches[1]
+    if ($html.Contains('id="ipv6"') -or $html.Contains("el('ipv6')")) { throw 'IPv6 card must be absent' }
+    $response = $client.PostAsync("$base/api/force",[Net.Http.StringContent]::new('')).GetAwaiter().GetResult()
+    if ([int]$response.StatusCode -ne 403) { throw 'Force action must require a CSRF token' }
+    $response.Dispose()
     $status = $client.GetStringAsync("$base/api/status").GetAwaiter().GetResult() | ConvertFrom-Json
     if ($status.results[0].result -ne 'failed' -or $status.results[0].error -notmatch 'public') { throw 'Invalid IP failure missing from dashboard' }
     $client.DefaultRequestHeaders.Add('X-CSRF-Token',$csrf)
     $response = $client.PostAsync("$base/api/force",[Net.Http.StringContent]::new('')).GetAwaiter().GetResult()
-    if ([int]$response.StatusCode -ne 202) { throw 'Authenticated force action not accepted' }
+    if ([int]$response.StatusCode -ne 202) { throw 'Force action not accepted' }
     $response.Dispose()
     do { Start-Sleep -Milliseconds 100; $status = $client.GetStringAsync("$base/api/status").GetAwaiter().GetResult() | ConvertFrom-Json } while ($status.running -and [DateTime]::UtcNow -lt $deadline)
     if ($status.running -or !$status.results[0].forced -or $status.history.Count -lt 2) { throw 'Force result/history missing' }
@@ -67,7 +68,7 @@ try {
     if ($status.history.Count -lt 3) { throw 'History did not survive container restart' }
     $user = (Docker-Checked @('inspect','--format','{{.Config.User}}',$containerName)).Trim()
     if ($user -ne '65532:65532') { throw 'Container is not running as expected non-root user' }
-    Write-Output 'PASS: production image, non-root/read-only runtime, authentication, CSRF force action, discovery errors, state writes and restart history. No Cloudflare calls.'
+    Write-Output 'PASS: production image, non-root/read-only runtime, direct dashboard access, CSRF force action, discovery errors, state writes and restart history. No Cloudflare calls.'
 } finally {
     if ($client) { $client.Dispose() }
     & docker rm -f $containerName 2>$null | Out-Null

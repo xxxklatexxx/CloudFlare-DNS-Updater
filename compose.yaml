@@ -16,7 +16,6 @@ services:
       # - ./service-ipv6:/sources/service-ipv6:ro
     secrets:
       - cloudflare_api_token
-      - dashboard_password
     healthcheck:
       test: [CMD, /ddns, -healthcheck]
       interval: 30s
@@ -32,7 +31,5 @@ services:
 secrets:
   cloudflare_api_token:
     file: ./secrets/cloudflare_api_token
-  dashboard_password:
-    file: ./secrets/dashboard_password
 volumes:
   ddns-state:

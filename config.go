@@ -30,8 +30,8 @@ type Config struct {
 	Interval      string   `json:"interval"`
 	Timeout       string   `json:"request_timeout"`
 	TokenFile     string   `json:"token_file"`
-	PasswordFile  string   `json:"dashboard_password_file"`
-	Username      string   `json:"dashboard_username"`
+	PasswordFile  string   `json:"dashboard_password_file,omitempty"` // Deprecated: accepted but ignored for existing configs.
+	Username      string   `json:"dashboard_username,omitempty"`      // Deprecated: accepted but ignored for existing configs.
 	Listen        string   `json:"listen"`
 	StateDir      string   `json:"state_dir"`
 	APIBase       string   `json:"-"` // injected only by tests; production always uses Cloudflare
@@ -39,7 +39,7 @@ type Config struct {
 }
 
 func loadConfig(path string) (Config, error) {
-	c := Config{Interval: "5m", Timeout: "10s", TokenFile: "/run/secrets/cloudflare_api_token", PasswordFile: "/run/secrets/dashboard_password", Username: "admin", Listen: ":8080", StateDir: "/state", APIBase: "https://api.cloudflare.com/client/v4"}
+	c := Config{Interval: "5m", Timeout: "10s", TokenFile: "/run/secrets/cloudflare_api_token", Listen: "127.0.0.1:8080", StateDir: "/state", APIBase: "https://api.cloudflare.com/client/v4"}
 	f, err := os.Open(path)
 	if err != nil {
 		return c, err
@@ -119,8 +119,8 @@ func (c *Config) validate() error {
 			}
 		}
 	}
-	if c.Username == "" || strings.Contains(c.Username, ":") || c.Listen == "" || c.StateDir == "" || c.TokenFile == "" || c.PasswordFile == "" {
-		return fmt.Errorf("listen, state_dir, secret files and a valid dashboard_username are required")
+	if c.Listen == "" || c.StateDir == "" || c.TokenFile == "" {
+		return fmt.Errorf("listen, state_dir and token_file are required")
 	}
 	return nil
 }

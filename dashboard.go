@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/subtle"
 	"embed"
 	"encoding/hex"
@@ -17,7 +16,7 @@ import (
 //go:embed dashboard.html
 var assets embed.FS
 
-func dashboard(parent context.Context, u *Updater, password string) (http.Handler, error) {
+func dashboard(parent context.Context, u *Updater) (http.Handler, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return nil, err
@@ -27,8 +26,6 @@ func dashboard(parent context.Context, u *Updater, password string) (http.Handle
 	if err != nil {
 		return nil, err
 	}
-	expectedUser := sha256.Sum256([]byte(u.cfg.Username))
-	expectedPass := sha256.Sum256([]byte(password))
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
@@ -98,17 +95,6 @@ func dashboard(parent context.Context, u *Updater, password string) (http.Handle
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'nonce-"+csrf+"'; style-src 'nonce-"+csrf+"'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
-		if r.URL.Path != "/healthz" {
-			username, pass, ok := r.BasicAuth()
-			uh := sha256.Sum256([]byte(username))
-			ph := sha256.Sum256([]byte(pass))
-			valid := subtle.ConstantTimeCompare(uh[:], expectedUser[:]) & subtle.ConstantTimeCompare(ph[:], expectedPass[:])
-			if !ok || valid != 1 {
-				w.Header().Set("WWW-Authenticate", `Basic realm="Cloudflare DDNS", charset="UTF-8"`)
-				http.Error(w, "authentication required", 401)
-				return
-			}
-		}
 		mux.ServeHTTP(w, r)
 	}), nil
 }
